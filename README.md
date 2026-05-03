@@ -1,14 +1,11 @@
-# perl-libwin32 shared workflows
+# perl-libwin32 shared release tooling
 
-Reusable GitHub Actions workflows for the Perl Win32 modules under this org.
+A composite GitHub Action that validates a tagged commit, builds a CPAN
+distribution tarball, and attaches it to a GitHub Release. Versions with
+an underscore (`0.59_01`) become pre-releases on GitHub and developer
+releases on PAUSE after upload.
 
-## `.github/workflows/release.yml`
-
-Validates a tagged commit, builds a CPAN distribution tarball, and attaches it
-to a GitHub Release. Treats versions with an underscore (`0.59_01`) as CPAN
-developer releases and marks the GitHub Release as a pre-release.
-
-Caller usage:
+## Caller usage
 
 ```yaml
 name: release
@@ -17,22 +14,28 @@ on:
     tags: ['v*']
 jobs:
   release:
-    uses: perl-libwin32/.github/.github/workflows/release.yml@v1
-    with:
-      version-file: Win32.pm        # required
-      dist-name:    Win32           # required
-      # meta-file:       META.yml          # default
-      # changelog-file:  Changes           # default
-      # canonical-email: jan@jandubois.com # default
-      # perl-version:    '5.40'            # default
+    runs-on: windows-latest
     permissions:
       contents: write
+    steps:
+      - uses: actions/checkout@<sha>
+      - uses: shogo82148/actions-setup-perl@<sha>
+        with:
+          perl-version: '5.40'
+          distribution: strawberry
+      - uses: perl-libwin32/.github/release-action@v1
+        with:
+          version-file: Win32.pm        # required
+          dist-name:    Win32           # required
+          # meta-file:       META.yml          # default
+          # changelog-file:  Changes           # default
+          # canonical-email: jan@jandubois.com # default
 ```
 
-The workflow runs on `windows-latest` with Strawberry Perl, because every
-`Makefile.PL` in this org gates on `$^O eq 'MSWin32' || $^O eq 'cygwin'`.
+The job runs on `windows-latest` because every `Makefile.PL` in this org
+gates on `$^O eq 'MSWin32' || $^O eq 'cygwin'`.
 
-## What the validation step checks
+## What the action checks
 
 Hard fails (block the release):
 
@@ -50,9 +53,24 @@ Soft warning:
 
 ## Pinning
 
-Each module pins the workflow by tag (`@v1`). The reusable workflow checks out
-this repo at `${{ github.workflow_sha }}` to fetch the validation script, so a
-caller pinned at `@v1` always gets the script that shipped with that tag.
+Each module pins the action by tag (`@v1`). Composite actions resolve
+bundled files via `${{ github.action_path }}`, so a caller pinned at
+`@v1` always uses the script that shipped with that tag.
 
-To roll out a change: commit, move the `v1` tag (or cut a new major), and the
-modules pick it up on their next release.
+To roll out a change: commit, move the `v1` tag (or cut a new major),
+and modules pick it up on their next release.
+
+## Local testing
+
+`release-action/release-checks.pl` runs standalone:
+
+```sh
+perl release-action/release-checks.pl \
+  --tag v0.59 \
+  --version-file Win32.pm \
+  --meta-file META.yml \
+  --changelog-file Changes \
+  --dist-name Win32 \
+  --canonical-email jan@jandubois.com \
+  --expected-repo https://github.com/perl-libwin32/win32
+```

@@ -1,0 +1,92 @@
+name: Perl Win32 release
+description: Validate metadata, build the CPAN tarball, and publish a GitHub Release.
+
+inputs:
+  version-file:
+    description: Path to the .pm file holding $VERSION.
+    required: true
+  dist-name:
+    description: Distribution name (e.g. Win32, Win32-Process).
+    required: true
+  meta-file:
+    description: Path to META.yml.
+    required: false
+    default: META.yml
+  changelog-file:
+    description: Path to the changelog file.
+    required: false
+    default: Changes
+  canonical-email:
+    description: Author email that must appear in META.yml.
+    required: false
+    default: jan@jandubois.com
+
+runs:
+  using: composite
+  steps:
+    - name: Determine tag version
+      id: tag
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="${GITHUB_REF_NAME#v}"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        if [[ "$version" == *_* ]]; then
+          echo "prerelease=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "prerelease=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Validate release artefacts
+      shell: bash
+      env:
+        VERSION_FILE:    ${{ inputs.version-file }}
+        META_FILE:       ${{ inputs.meta-file }}
+        CHANGELOG_FILE:  ${{ inputs.changelog-file }}
+        DIST_NAME:       ${{ inputs.dist-name }}
+        CANONICAL_EMAIL: ${{ inputs.canonical-email }}
+      run: |
+        perl "$GITHUB_ACTION_PATH/release-checks.pl" \
+          --tag "$GITHUB_REF_NAME" \
+          --version-file "$VERSION_FILE" \
+          --meta-file "$META_FILE" \
+          --changelog-file "$CHANGELOG_FILE" \
+          --dist-name "$DIST_NAME" \
+          --canonical-email "$CANONICAL_EMAIL" \
+          --expected-repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+
+    - name: Build distribution tarball
+      id: dist
+      shell: bash
+      env:
+        DIST_NAME:   ${{ inputs.dist-name }}
+        TAG_VERSION: ${{ steps.tag.outputs.version }}
+      run: |
+        set -euo pipefail
+        perl Makefile.PL
+        make_cmd=$(perl -MConfig -e 'print $Config{make}')
+        "$make_cmd" dist
+        tarball="${DIST_NAME}-${TAG_VERSION}.tar.gz"
+        if [ ! -f "$tarball" ]; then
+          echo "::error::make dist did not produce $tarball"
+          ls -la *.tar.gz 2>/dev/null || true
+          exit 1
+        fi
+        echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+    - name: Create GitHub Release
+      shell: bash
+      env:
+        GH_TOKEN:   ${{ github.token }}
+        TARBALL:    ${{ steps.dist.outputs.tarball }}
+        PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+      run: |
+        set -euo pipefail
+        flag=()
+        if [ "$PRERELEASE" = "true" ]; then
+          flag+=(--prerelease)
+        fi
+        gh release create "$GITHUB_REF_NAME" "$TARBALL" \
+          --title "$GITHUB_REF_NAME" \
+          --generate-notes \
+          "${flag[@]}"
