@@ -1,0 +1,118 @@
+name: release
+
+on:
+  workflow_call:
+    inputs:
+      version-file:
+        description: Path to the .pm file holding $VERSION.
+        required: true
+        type: string
+      dist-name:
+        description: Distribution name (e.g. Win32, Win32-Process).
+        required: true
+        type: string
+      meta-file:
+        description: Path to META.yml.
+        type: string
+        default: META.yml
+      changelog-file:
+        description: Path to the changelog file.
+        type: string
+        default: Changes
+      canonical-email:
+        description: Author email that must appear in META.yml.
+        type: string
+        default: jan@jandubois.com
+      perl-version:
+        description: Perl version to install on the runner.
+        type: string
+        default: '5.40'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Validate and release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check out shared release tooling
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: perl-libwin32/.github
+          ref: ${{ github.workflow_sha }}
+          path: .release-tooling
+
+      - uses: shogo82148/actions-setup-perl@9f8c263975569ff3b4e510cb1f8813115749e146 # v1.41.0
+        with:
+          perl-version: ${{ inputs.perl-version }}
+          distribution: strawberry
+
+      - name: Determine tag version
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$version" == *_* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate release artefacts
+        shell: bash
+        env:
+          VERSION_FILE:    ${{ inputs.version-file }}
+          META_FILE:       ${{ inputs.meta-file }}
+          CHANGELOG_FILE:  ${{ inputs.changelog-file }}
+          DIST_NAME:       ${{ inputs.dist-name }}
+          CANONICAL_EMAIL: ${{ inputs.canonical-email }}
+        run: |
+          perl .release-tooling/scripts/release-checks.pl \
+            --tag "$GITHUB_REF_NAME" \
+            --version-file "$VERSION_FILE" \
+            --meta-file "$META_FILE" \
+            --changelog-file "$CHANGELOG_FILE" \
+            --dist-name "$DIST_NAME" \
+            --canonical-email "$CANONICAL_EMAIL" \
+            --expected-repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+
+      - name: Build distribution tarball
+        id: dist
+        shell: bash
+        env:
+          DIST_NAME:   ${{ inputs.dist-name }}
+          TAG_VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          perl Makefile.PL
+          make_cmd=$(perl -MConfig -e 'print $Config{make}')
+          "$make_cmd" dist
+          tarball="${DIST_NAME}-${TAG_VERSION}.tar.gz"
+          if [ ! -f "$tarball" ]; then
+            echo "::error::make dist did not produce $tarball"
+            ls -la *.tar.gz 2>/dev/null || true
+            exit 1
+          fi
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
+          TARBALL:    ${{ steps.dist.outputs.tarball }}
+          PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          flag=()
+          if [ "$PRERELEASE" = "true" ]; then
+            flag+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" "$TARBALL" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            "${flag[@]}"
