@@ -38,11 +38,20 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Determine release-tooling ref
+        id: tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_WORKFLOW_REF##*@}"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Release-tooling ref: $ref"
+
       - name: Check out shared release tooling
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: perl-libwin32/.github
-          ref: ${{ github.workflow_sha }}
+          ref: ${{ steps.tooling.outputs.ref }}
           path: .release-tooling
 
       - uses: shogo82148/actions-setup-perl@9f8c263975569ff3b4e510cb1f8813115749e146 # v1.41.0
