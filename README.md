@@ -19,10 +19,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@<sha>
-      - uses: shogo82148/actions-setup-perl@<sha>
-        with:
-          perl-version: '5.40'
-          distribution: strawberry
       - uses: perl-libwin32/.github/release-action@v1
         with:
           version-file: Win32.pm        # required
@@ -30,6 +26,7 @@ jobs:
           # meta-file:       META.yml          # default
           # changelog-file:  Changes           # default
           # canonical-email: jan@jandubois.com # default
+          # perl-version:    '5.40'            # default
 ```
 
 The job runs on `windows-latest` because every `Makefile.PL` in this org

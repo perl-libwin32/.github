@@ -20,10 +20,20 @@ inputs:
     description: Author email that must appear in META.yml.
     required: false
     default: jan@jandubois.com
+  perl-version:
+    description: Perl version to install.
+    required: false
+    default: '5.40'
 
 runs:
   using: composite
   steps:
+    - id: setup-perl
+      uses: shogo82148/actions-setup-perl@9f8c263975569ff3b4e510cb1f8813115749e146 # v1.41.0
+      with:
+        perl-version: ${{ inputs.perl-version }}
+        distribution: strawberry
+
     - name: Determine tag version
       id: tag
       shell: bash
@@ -40,13 +50,14 @@ runs:
     - name: Validate release artefacts
       shell: bash
       env:
+        PERL:            ${{ steps.setup-perl.outputs.perl-bin }}
         VERSION_FILE:    ${{ inputs.version-file }}
         META_FILE:       ${{ inputs.meta-file }}
         CHANGELOG_FILE:  ${{ inputs.changelog-file }}
         DIST_NAME:       ${{ inputs.dist-name }}
         CANONICAL_EMAIL: ${{ inputs.canonical-email }}
       run: |
-        perl "$GITHUB_ACTION_PATH/release-checks.pl" \
+        "$PERL" "$GITHUB_ACTION_PATH/release-checks.pl" \
           --tag "$GITHUB_REF_NAME" \
           --version-file "$VERSION_FILE" \
           --meta-file "$META_FILE" \
@@ -59,12 +70,13 @@ runs:
       id: dist
       shell: bash
       env:
+        PERL:        ${{ steps.setup-perl.outputs.perl-bin }}
         DIST_NAME:   ${{ inputs.dist-name }}
         TAG_VERSION: ${{ steps.tag.outputs.version }}
       run: |
         set -euo pipefail
-        perl Makefile.PL
-        make_cmd=$(perl -MConfig -e 'print $Config{make}')
+        "$PERL" Makefile.PL
+        make_cmd=$("$PERL" -MConfig -e 'print $Config{make}')
         "$make_cmd" dist
         tarball="${DIST_NAME}-${TAG_VERSION}.tar.gz"
         if [ ! -f "$tarball" ]; then
