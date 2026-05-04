@@ -83,8 +83,15 @@ else {
 
     my $bug = $resources->{bugtracker};
     my $bug_url = ref($bug) eq 'HASH' ? ($bug->{web} || $bug->{mailto}) : $bug;
-    warn "::warning::$meta_file resources.bugtracker is missing (suggest $expected_repo/issues)\n"
-        unless $bug_url;
+    my $expected_bug = "$expected_repo/issues";
+    if (!$bug_url) {
+        push @errors, "$meta_file resources.bugtracker is missing (expected $expected_bug)";
+    }
+    else {
+        (my $normalised_bug = $bug_url) =~ s{/$}{};
+        push @errors, "$meta_file resources.bugtracker=$bug_url but expected $expected_bug"
+            if lc $normalised_bug ne lc $expected_bug;
+    }
 }
 
 push @errors, "no dated entry for $tag_version in $changelog_file"

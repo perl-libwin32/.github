@@ -41,12 +41,9 @@ Hard fails (block the release):
 - `META.yml` declares a license other than `unknown` and a non-empty abstract.
 - An author entry contains the canonical email; no entry uses `@activestate.com`.
 - `META.yml` `resources.repository` matches the GitHub repo URL.
+- `META.yml` `resources.bugtracker` matches `<repo URL>/issues`.
 - The changelog has a dated entry (`<version>    [YYYY-MM-DD]`) for the tag.
 - `MANIFEST` has no drift (`ExtUtils::Manifest::fullcheck`).
-
-Soft warning:
-
-- `META.yml` `resources.bugtracker` missing.
 
 ## Pinning
 
