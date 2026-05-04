@@ -1,11 +1,19 @@
-# perl-libwin32 shared release tooling
+# perl-libwin32 shared CI tooling
 
-A composite GitHub Action that validates a tagged commit, builds a CPAN
-distribution tarball, and attaches it to a GitHub Release. Versions with
-an underscore (`0.59_01`) become pre-releases on GitHub and developer
-releases on PAUSE after upload.
+Two pieces of org-shared CI live here:
 
-## Caller usage
+- **`release-action/`** — composite action: validates metadata, builds the
+  CPAN tarball, and attaches it to a GitHub Release.
+- **`.github/workflows/test.yml`** — reusable workflow: runs the
+  Strawberry-64-bit matrix, the pinned 32-bit Strawberry job, and the
+  Cygwin matrix.
+
+## Release action
+
+Versions with an underscore (`0.59_01`) become pre-releases on GitHub and
+developer releases on PAUSE after upload.
+
+### Caller usage
 
 ```yaml
 name: release
@@ -32,7 +40,7 @@ jobs:
 The job runs on `windows-latest` because every `Makefile.PL` in this org
 gates on `$^O eq 'MSWin32' || $^O eq 'cygwin'`.
 
-## What the action checks
+### What the action checks
 
 Hard fails (block the release):
 
@@ -45,16 +53,7 @@ Hard fails (block the release):
 - The changelog has a dated entry (`<version>    [YYYY-MM-DD]`) for the tag.
 - `MANIFEST` has no drift (`ExtUtils::Manifest::fullcheck`).
 
-## Pinning
-
-Each module pins the action by tag (`@v1`). Composite actions resolve
-bundled files via `${{ github.action_path }}`, so a caller pinned at
-`@v1` always uses the script that shipped with that tag.
-
-To roll out a change: commit, move the `v1` tag (or cut a new major),
-and modules pick it up on their next release.
-
-## Local testing
+### Local testing
 
 `release-action/release-checks.pl` runs standalone:
 
@@ -68,3 +67,45 @@ perl release-action/release-checks.pl \
   --canonical-email jan@jandubois.com \
   --expected-repo https://github.com/perl-libwin32/win32
 ```
+
+## Test workflow
+
+### Caller usage
+
+```yaml
+name: test
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    uses: perl-libwin32/.github/.github/workflows/test.yml@v1
+    # with:
+    #   test-command:        'cpanm --test-only --verbose .'   # default
+    #   installdeps-command: 'cpanm --installdeps --notest .'  # default
+    #   perl-versions:       '["5.32", "5.36", "5.38", "5.40"]'# default
+```
+
+Three jobs run per invocation:
+
+- **Strawberry**: matrix over `perl-versions` (input), `windows-latest`.
+- **Strawberry 32-bit**: pinned 5.38.2.1, `windows-latest`.
+- **Cygwin**: matrix over `[gcc, g++]`, `windows-latest`.
+
+The `test-command` and `installdeps-command` inputs apply to the two
+Strawberry jobs. The Cygwin job hard-codes its own invocation because
+the `g++` cell needs `--configure-args "CC=g++"`, which assumes
+`cpanm`.
+
+## Pinning
+
+Each module pins the shared tooling by tag (`@v1`). For the composite
+action, `${{ github.action_path }}` resolves to the action checkout at
+that ref, so the bundled validation script always matches the pinned
+tag. For the reusable workflow, GitHub fetches the workflow file from
+the same ref.
+
+To roll out a change: commit, move the `v1` tag (or cut a new major),
+and modules pick it up on their next run.
