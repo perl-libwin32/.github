@@ -102,12 +102,54 @@ runs:
         fi
         echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
 
+    - name: Extract changelog entry for release notes
+      id: notes
+      shell: bash
+      env:
+        PERL:           ${{ steps.perl.outputs.bin }}
+        CHANGELOG_FILE: ${{ inputs.changelog-file }}
+        TAG_VERSION:    ${{ steps.tag.outputs.version }}
+      run: |
+        set -euo pipefail
+        notes_file="$RUNNER_TEMP/release-notes.md"
+        "$PERL" -e '
+          use strict;
+          my ($file, $version) = @ARGV;
+          open my $fh, "<:utf8", $file or die "open $file: $!\n";
+          my $in = 0;
+          my @block;
+          while (<$fh>) {
+              if (/^\Q$version\E\s+\[/) { $in = 1; next; }
+              last if $in && /^\d+(?:\.\d+)?(?:_\d+)?\s+\[/;
+              push @block, $_ if $in;
+          }
+          die "no changelog entry for $version in $file\n" unless @block;
+          pop @block while @block && $block[-1] =~ /^\s*$/;
+          my $min = 1e9;
+          for (@block) {
+              next if /^\s*$/;
+              my ($lead) = /^(\s*)/;
+              $min = length($lead) if length($lead) < $min;
+          }
+          $min = 0 if $min == 1e9;
+          for (@block) {
+              s/^[ \t]{$min}// if length($_) > $min;
+          }
+          binmode STDOUT, ":utf8";
+          print @block;
+        ' "$CHANGELOG_FILE" "$TAG_VERSION" > "$notes_file"
+        echo "file=$notes_file" >> "$GITHUB_OUTPUT"
+        echo "----- release notes preview -----"
+        cat "$notes_file"
+        echo "----- end -----"
+
     - name: Create GitHub Release
       shell: bash
       env:
         GH_TOKEN:   ${{ github.token }}
         TARBALL:    ${{ steps.dist.outputs.tarball }}
         PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+        NOTES_FILE: ${{ steps.notes.outputs.file }}
       run: |
         set -euo pipefail
         flag=()
@@ -116,5 +158,5 @@ runs:
         fi
         gh release create "$GITHUB_REF_NAME" "$TARBALL" \
           --title "$GITHUB_REF_NAME" \
-          --generate-notes \
+          --notes-file "$NOTES_FILE" \
           "${flag[@]}"
