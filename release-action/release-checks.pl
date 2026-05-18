@@ -95,7 +95,7 @@ else {
 }
 
 push @errors, "no dated entry for $tag_version in $changelog_file"
-    . " (expected line matching: $tag_version    [YYYY-MM-DD])"
+    . " (expected line matching: ## $tag_version [YYYY-MM-DD])"
     unless check_changelog_entry($changelog_file, $tag_version);
 
 local $ExtUtils::Manifest::Quiet = 1;
@@ -120,7 +120,7 @@ sub check_changelog_entry {
     open my $fh, '<:raw', $file or die "open $file: $!\n";
     my $pat = quotemeta($version);
     while (<$fh>) {
-        return 1 if /^${pat}\s+\[\d{4}-\d{2}-\d{2}\]/;
+        return 1 if /^##\s+${pat}\s+\[\d{4}-\d{2}-\d{2}\]/;
     }
     return 0;
 }

@@ -15,7 +15,7 @@ inputs:
   changelog-file:
     description: Path to the changelog file.
     required: false
-    default: Changes
+    default: CHANGES.md
   canonical-email:
     description: Author email that must appear in META.yml.
     required: false
@@ -119,8 +119,8 @@ runs:
           my $in = 0;
           my @block;
           while (<$fh>) {
-              if (/^\Q$version\E\s+\[/) { $in = 1; next; }
-              last if $in && /^\d+(?:\.\d+)?(?:_\d+)?\s+\[/;
+              if (/^##\s+\Q$version\E\s+\[/) { $in = 1; next; }
+              last if $in && /^##\s+\d+(?:\.\d+)?(?:_\d+)?\s+\[/;
               push @block, $_ if $in;
           }
           die "no changelog entry for $version in $file\n" unless @block;

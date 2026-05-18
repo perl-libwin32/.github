@@ -27,12 +27,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@<sha>
-      - uses: perl-libwin32/.github/release-action@v1
+      - uses: perl-libwin32/.github/release-action@v2
         with:
           version-file: Win32.pm        # required
           dist-name:    Win32           # required
           # meta-file:       META.yml          # default
-          # changelog-file:  Changes           # default
+          # changelog-file:  CHANGES.md        # default
           # canonical-email: jan@jandubois.com # default
           # perl-version:    '5.40'            # default
 ```
@@ -50,7 +50,7 @@ Hard fails (block the release):
 - An author entry contains the canonical email; no entry uses `@activestate.com`.
 - `META.yml` `resources.repository` matches the GitHub repo URL.
 - `META.yml` `resources.bugtracker` matches `<repo URL>/issues`.
-- The changelog has a dated entry (`<version>    [YYYY-MM-DD]`) for the tag.
+- The changelog has a dated Markdown header (`## <version> [YYYY-MM-DD]`) for the tag.
 - `MANIFEST` has no drift (`ExtUtils::Manifest::fullcheck`).
 
 ### Local testing
@@ -62,7 +62,7 @@ perl release-action/release-checks.pl \
   --tag v0.59 \
   --version-file Win32.pm \
   --meta-file META.yml \
-  --changelog-file Changes \
+  --changelog-file CHANGES.md \
   --dist-name Win32 \
   --canonical-email jan@jandubois.com \
   --expected-repo https://github.com/perl-libwin32/win32
@@ -101,11 +101,28 @@ the `g++` cell needs `--configure-args "CC=g++"`, which assumes
 
 ## Pinning
 
-Each module pins the shared tooling by tag (`@v1`). For the composite
-action, `${{ github.action_path }}` resolves to the action checkout at
-that ref, so the bundled validation script always matches the pinned
-tag. For the reusable workflow, GitHub fetches the workflow file from
-the same ref.
+Each module pins the shared tooling by tag. The release action is at
+`@v2`; the test workflow is at `@v1`. For the composite action,
+`${{ github.action_path }}` resolves to the action checkout at that
+ref, so the bundled validation script always matches the pinned tag.
+For the reusable workflow, GitHub fetches the workflow file from the
+same ref.
 
-To roll out a change: commit, move the `v1` tag (or cut a new major),
-and modules pick it up on their next run.
+To roll out a non-breaking change: commit, move the current major tag,
+and modules pick it up on their next run. To roll out a breaking
+change: commit, tag a new major (`v3`, etc.), and migrate each module
+explicitly.
+
+### v2 release-action migration
+
+`v2` requires the changelog file to be Markdown (defaulting to
+`CHANGES.md`) with `## <version> [YYYY-MM-DD]` headers. The legacy
+flat format that `v1` accepted (`<version>    [YYYY-MM-DD]`) no
+longer validates. Each module migrates on its own schedule:
+
+1. Rename `Changes` to `CHANGES.md`.
+2. Add `# Revision history for <Module>` at the top.
+3. Prefix every existing version line with `## `.
+4. Rewrite `[PR/N]` references as `(#N)` so GitHub auto-links them.
+5. Update `MANIFEST` (`Changes` → `CHANGES.md`).
+6. Bump `.github/workflows/release.yml` from `@v1` to `@v2`.
