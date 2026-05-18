@@ -123,6 +123,9 @@ longer validates. Each module migrates on its own schedule:
 1. Rename `Changes` to `CHANGES.md`.
 2. Add `# Revision history for <Module>` at the top.
 3. Prefix every existing version line with `## `.
-4. Rewrite `[PR/N]` references as `(#N)` so GitHub auto-links them.
+4. Rewrite `[PR/N]` references as full-URL Markdown links
+   (`[#N](https://github.com/perl-libwin32/<repo>/pull/N)`). GitHub
+   auto-links bare `#N` only on Release pages and in issue comments,
+   not in rendered Markdown files like `CHANGES.md`.
 5. Update `MANIFEST` (`Changes` → `CHANGES.md`).
 6. Bump `.github/workflows/release.yml` from `@v1` to `@v2`.
