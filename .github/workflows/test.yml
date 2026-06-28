@@ -25,7 +25,7 @@ jobs:
       matrix:
         perl-version: ${{ fromJSON(inputs.perl-versions) }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: 'Enable 8.3 name creation on D: (the GHA worker volume)'
         shell: pwsh
         run: |
@@ -43,7 +43,7 @@ jobs:
     name: Strawberry 5.38.2.1 (32-bit)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: 'Enable 8.3 name creation on D: (the GHA worker volume)'
         shell: pwsh
         run: |
@@ -71,7 +71,7 @@ jobs:
       matrix:
         perl-version: ['5.40']
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: 'Enable 8.3 name creation on D: (the GHA worker volume)'
         shell: pwsh
         run: |
@@ -128,7 +128,7 @@ jobs:
       - name: Preserve LF line endings on checkout
         shell: pwsh
         run: git config --global core.autocrlf input
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: 'Enable 8.3 name creation on D: (the GHA worker volume)'
         shell: pwsh
         run: |
