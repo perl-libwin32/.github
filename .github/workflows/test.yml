@@ -31,7 +31,7 @@ jobs:
         run: |
           fsutil 8dot3name set D: 0
           fsutil 8dot3name query D:
-      - uses: shogo82148/actions-setup-perl@9f8c263975569ff3b4e510cb1f8813115749e146 # v1.41.0
+      - uses: shogo82148/actions-setup-perl@3d3cb73ca65d657a809d97eab324d4e4f140bf5e # v1.42.0
         with:
           perl-version: ${{ matrix.perl-version }}
           distribution: strawberry
@@ -77,7 +77,7 @@ jobs:
         run: |
           fsutil 8dot3name set D: 0
           fsutil 8dot3name query D:
-      - uses: shogo82148/actions-setup-perl@9f8c263975569ff3b4e510cb1f8813115749e146 # v1.41.0
+      - uses: shogo82148/actions-setup-perl@3d3cb73ca65d657a809d97eab324d4e4f140bf5e # v1.42.0
         with:
           perl-version: ${{ matrix.perl-version }}
           distribution: strawberry
