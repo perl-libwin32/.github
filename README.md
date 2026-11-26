@@ -5,8 +5,8 @@ Two pieces of org-shared CI live here:
 - **`release-action/`** — composite action: validates metadata, builds the
   CPAN tarball, and attaches it to a GitHub Release.
 - **`.github/workflows/test.yml`** — reusable workflow: runs the
-  Strawberry-64-bit matrix, the pinned 32-bit Strawberry job, and the
-  Cygwin matrix.
+  64-bit Strawberry matrix, the pinned 32-bit Strawberry job, the UTF-8
+  ACP and MSVC jobs, and the Cygwin matrix.
 
 ## Release action
 
@@ -81,32 +81,40 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    uses: perl-libwin32/.github/.github/workflows/test.yml@v1
+    uses: perl-libwin32/.github/.github/workflows/test.yml@v2
     # with:
     #   test-command:        'cpanm --test-only --verbose .'   # default
     #   installdeps-command: 'cpanm --installdeps --notest .'  # default
     #   perl-versions:       '["5.32", "5.36", "5.38", "5.40"]'# default
 ```
 
-Three jobs run per invocation:
+These jobs run per invocation:
 
 - **Strawberry**: matrix over `perl-versions` (input), `windows-latest`.
 - **Strawberry 32-bit**: pinned 5.38.2.1, `windows-latest`.
+- **UTF-8 ACP**: Strawberry 5.40 with the UTF-8 code page enabled in
+  `perl.exe`, `windows-latest`.
+- **MSVC**: conda-forge's Perl 5.44, built with Visual C++ against the
+  Universal CRT, `windows-latest`. Only `@v2` has this job.
 - **Cygwin**: matrix over `[gcc, g++]`, `windows-latest`.
 
-The `test-command` and `installdeps-command` inputs apply to the two
-Strawberry jobs. The Cygwin job hard-codes its own invocation because
+The `test-command` and `installdeps-command` inputs apply to every job
+except Cygwin. The Cygwin job hard-codes its own invocation because
 the `g++` cell needs `--configure-args "CC=g++"`, which assumes
 `cpanm`.
 
 ## Pinning
 
 Each module pins the shared tooling by tag. The release action is at
-`@v2`; the test workflow is at `@v1`. For the composite action,
+`@v2`, and so is the test workflow. For the composite action,
 `${{ github.action_path }}` resolves to the action checkout at that
 ref, so the bundled validation script always matches the pinned tag.
 For the reusable workflow, GitHub fetches the workflow file from the
 same ref.
+
+A module that doesn't build with Visual C++ yet stays on
+`test.yml@v1`, which lacks the MSVC job. It moves to `@v2` once it
+builds.
 
 To roll out a non-breaking change: commit, move the current major tag,
 and modules pick it up on their next run. To roll out a breaking
