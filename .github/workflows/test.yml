@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       test-command:
-        description: Command that runs the test suite (Strawberry jobs).
+        description: Command that runs the test suite (every job except Cygwin).
         type: string
         default: 'cpanm --test-only --verbose .'
       installdeps-command:
@@ -114,6 +114,47 @@ jobs:
       - run: ${{ inputs.installdeps-command }}
       - run: ${{ inputs.test-command }}
 
+  msvc:
+    name: MSVC (conda-forge Perl 5.44)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: 'Enable 8.3 name creation on D: (the GHA worker volume)'
+        shell: pwsh
+        run: |
+          fsutil 8dot3name set D: 0
+          fsutil 8dot3name query D:
+      - name: Install conda-forge Perl, built with Visual C++
+        shell: pwsh
+        run: |
+          & "$env:CONDA\Scripts\conda.exe" create --yes --prefix C:\perl-msvc --override-channels --channel conda-forge perl=5.44.0=1_hfd05255_perl5
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # conda-forge marks its noarch cpanminus Unix-only until it rebuilds
+          # the package for perl 5.44, so fetch the fatpacked cpanm from the
+          # 1.7048 tag.
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/miyagawa/cpanminus/ef89524f68e1744897979896f9c2e92c7b161bbb/cpanm -OutFile C:\perl-msvc\bin\cpanm
+          if ((Get-FileHash -Algorithm SHA256 C:\perl-msvc\bin\cpanm).Hash -ne '4c5dcaac65e0c3e6e4272fd0f5c0a9c9ebdcbb29cdf329b18478b52f6883071c') { throw 'cpanm checksum mismatch' }
+          $env:PATH = "C:\perl-msvc\bin;$env:PATH"
+          & C:\perl-msvc\bin\pl2bat.bat C:\perl-msvc\bin\cpanm
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\perl-msvc\bin'
+      # Each step runs in a new shell, so pass the variables that
+      # vcvars64.bat sets on to the steps that follow.
+      - name: Load the Visual C++ environment
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vars = cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          foreach ($line in $vars) {
+            if ($line -match '^(PATH|INCLUDE|LIB|LIBPATH|VCINSTALLDIR|VCToolsInstallDir|VCToolsVersion|WindowsSdkDir|WindowsSDKVersion|UCRTVersion|UniversalCRTSdkDir|VSINSTALLDIR|Platform)=(.*)$') {
+              "$($matches[1])=$($matches[2])" | Add-Content -Path $env:GITHUB_ENV
+            }
+          }
+      - run: perl -V
+      - run: ${{ inputs.installdeps-command }}
+      - run: ${{ inputs.test-command }}
+
   cygwin:
     name: Cygwin (${{ matrix.cc }})
     runs-on: windows-latest
@@ -134,7 +175,7 @@ jobs:
         run: |
           fsutil 8dot3name set D: 0
           fsutil 8dot3name query D:
-      - uses: cygwin/cygwin-install-action@711d29f3da23c9f4a1798e369a6f01198c13b11a # v6.1
+      - uses: cygwin/cygwin-install-action@5a1b0cd107181fa6bb6bf3f90d500f4fb3132f18 # v7.0.0
         with:
           packages: >-
             perl
