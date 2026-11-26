@@ -33,6 +33,7 @@ runs:
       with:
         perl-version: ${{ inputs.perl-version }}
         distribution: strawberry
+        enable-modules-cache: false
 
     - name: Locate Strawberry Perl
       id: perl

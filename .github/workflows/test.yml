@@ -35,6 +35,7 @@ jobs:
         with:
           perl-version: ${{ matrix.perl-version }}
           distribution: strawberry
+          enable-modules-cache: false
       - run: perl -V
       - run: ${{ inputs.installdeps-command }}
       - run: ${{ inputs.test-command }}
@@ -81,6 +82,7 @@ jobs:
         with:
           perl-version: ${{ matrix.perl-version }}
           distribution: strawberry
+          enable-modules-cache: false
       # Embed the per-process UTF-8 ACP opt-in (Windows 10 1903+) into
       # perl.exe so the rest of the job runs as if the system code page
       # were CP_UTF8. External .manifest files are ignored when the exe
