@@ -114,7 +114,9 @@ same ref.
 
 A module that doesn't build with Visual C++ yet stays on
 `test.yml@v1`, which lacks the MSVC job. It moves to `@v2` once it
-builds.
+builds. Until then its Cygwin jobs fail, because the
+`cygwin-install-action` that `v1` pins doesn't accept the certificate
+that Cygwin now signs its installer with.
 
 To roll out a non-breaking change: commit, move the current major tag,
 and modules pick it up on their next run. To roll out a breaking
