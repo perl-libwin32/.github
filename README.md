@@ -112,11 +112,9 @@ ref, so the bundled validation script always matches the pinned tag.
 For the reusable workflow, GitHub fetches the workflow file from the
 same ref.
 
-A module that doesn't build with Visual C++ yet stays on
-`test.yml@v1`, which lacks the MSVC job. It moves to `@v2` once it
-builds. Until then its Cygwin jobs fail, because the
-`cygwin-install-action` that `v1` pins doesn't accept the certificate
-that Cygwin now signs its installer with.
+Don't call `test.yml@v1`. Its Cygwin jobs fail while installing
+Cygwin, because the version of `cygwin-install-action` that `v1` pins
+rejects the certificate that Cygwin now signs its installer with.
 
 To roll out a non-breaking change: commit, move the current major tag,
 and modules pick it up on their next run. To roll out a breaking
